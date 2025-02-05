@@ -1,3 +1,6 @@
+
+Pasos para preparar y ejecutar el programa:
+
 as -g chain2int.s -o chain.o
 gcc -Wall -g -c finalchar.c -o finalchar.o
 gcc -g chain.o finalchar.o -o final -lwiringPi -lpthread
