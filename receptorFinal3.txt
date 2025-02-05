@@ -1,0 +1,82 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <termios.h>
+#include "EasyPIO.h"
+
+
+#define numLED 8
+
+// int salidas[numLED] = {26,20,21,16,12,1};
+int salidas[numLED] = {26,21, 20, 16, 12, 25, 24, 23};
+
+
+int main() {
+	
+	pioInit();
+	for(int i = 0; i < numLED; i++){
+		pinMode(salidas[i], OUTPUT);
+		digitalWrite(salidas[i], 0);
+	}
+	
+	
+    int serial_port = open("/dev/serial0", O_RDWR);  // Ajusta al puerto correcto en la PC, ej. /dev/ttyUSB0 o COM3
+
+    if (serial_port < 0) {
+        perror("Error al abrir el puerto serie");
+        return 1;
+    }
+
+    struct termios tty;
+
+    if (tcgetattr(serial_port, &tty) != 0) {
+        perror("Error al obtener atributos de terminal");
+        return 1;
+    }
+
+    // Configuración de parámetros de comunicación
+    tty.c_cflag &= ~PARENB; // Sin paridad
+    tty.c_cflag &= ~CSTOPB; // 1 bit de parada
+    tty.c_cflag &= ~CSIZE; 
+    tty.c_cflag |= CS8;     // 8 bits de datos
+    tty.c_cflag |= CREAD | CLOCAL;  // Activar receptor, ignorar señales de control
+
+    // Configuración de velocidad en baudios (baud rate)
+    cfsetispeed(&tty, B9600);
+    cfsetospeed(&tty, B9600);
+
+    // Aplicar configuración de la terminal
+    tcsetattr(serial_port, TCSANOW, &tty);
+
+    // Buffer de lectura
+    int read_buf = 0;
+
+    printf("Esperando mensajes...\n");
+
+    while (1) {
+        int num_bytes = read(serial_port, &read_buf, 1);
+
+        if (num_bytes < 0) {
+            perror("Error de lectura");
+            break;
+            
+        } else if (num_bytes > 0){
+		for(int i = 0; i < numLED; i++){
+			digitalWrite(salidas[i], (read_buf)&(128>>i));
+			printf("%d", !!((read_buf)&(128>>i)));
+		}
+		printf("\n");
+	}
+	printf("Recibido: %d\n", read_buf);
+	tcflush(serial_port, TCIOFLUSH);
+	
+    }
+    
+    /*for(int i=0; i<numLED; i++){
+	digitalWrite(salidas[i], 0);
+    }*/
+    close(serial_port);
+    return 0;
+}
